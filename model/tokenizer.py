@@ -42,6 +42,72 @@ def load_stored_tokenizer_if_exists(source_name, folder_name, verbose):
                            verbose_init=verbose)
     return None
 
+import re
+
+class GrokTokenizer:
+    # adaptation of CharTokenizer to the GrokkedTransformer dataset
+    def __init__(self, data=None, verbose_init=False, from_dict=None):
+        self.pad_token = "<pad>"
+        self.eos = "</a>"
+        self.unk_token = "<unk>" # there are no unk tokens, but just in case
+        self.special_tokens = [self.eos, self.pad_token, self.unk_token]
+        
+        if None is not from_dict:
+            id2tok = from_dict["id2tok"]
+        else:
+            id2tok = self.make_tokens(data)
+
+        self.finish_init(id2tok, verbose_init)
+
+    def make_tokens(self, data):
+        tokens = set()
+        assert isinstance(data, list)
+        for s in data:
+            tokens.update(self.tokenize_string(s))
+        tokens.update(self.special_tokens)
+        return sorted(list(tokens))
+
+    def tokenize_string(self, s):
+        pattern = r"<[^>]+>"
+        return re.findall(pattern, s)
+
+    def finish_init(self, id2tok, verbose_init):
+        self.id2tok = id2tok
+        self.tok2id = {t: i for i, t in enumerate(self.id2tok)}
+        self.eos_token_id = self.tok2id[self.eos]
+        self.special_token_ids = [self.tok2id[self.eos]]
+        if verbose_init:
+            print("made tokenizer with", len(self.tok2id), "tokens")
+        self.is_char_tokenizer_with_eos_and_bos = False
+
+    def __call__(self, samples):
+        def single(s):
+            tokens = self.tokenize_string(s)
+            token_ids = [self.tok2id.get(t, self.tok2id[self.eos]) for t in tokens]
+            return token_ids + [self.eos_token_id]
+        
+        if isinstance(samples, str):
+            res = single(samples)
+        else:
+            res = [single(s) for s in samples]
+        
+        return {'input_ids': res}
+
+    def get_vocab(self):
+        return self.tok2id
+
+    def convert_ids_to_tokens(self, ids):
+        return [self.id2tok[i] for i in ids]
+
+    def decode(self, ids, skip_special_tokens=True):
+        if skip_special_tokens:
+            ids = [i for i in ids if i not in self.special_token_ids]
+        tokens = self.convert_ids_to_tokens(ids)
+        return "".join(tokens)
+
+    def save_dict(self):
+        return {"id2tok": self.id2tok}
+
 
 class CharTokenizer:
     # made with the BertTokenizer function signatures my functions expect to
@@ -158,6 +224,8 @@ def getBertLikeTokenizer(name, data=None, custom_vocab_size=30,
                          verbose_init=False):
     if name == "char":
         return CharTokenizer(data, verbose_init=verbose_init)
+    if name == "grok":
+        return GrokTokenizer(data, verbose_init=verbose_init)
     if name == "custom":
         return BertTokenizerLike(data=data,
                                  custom_vocab_size=custom_vocab_size,

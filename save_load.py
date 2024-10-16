@@ -18,6 +18,7 @@ try:
         # e.g. ../saved-models, or more complicated if using cloud services
         models_paths = [l.strip("\n") for l in models_paths if not
                              l.startswith("#")]
+        # 
 except Exception as e:
     print("couldnt find extra models paths")
     models_paths = ["../saved-models"]
