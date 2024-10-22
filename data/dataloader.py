@@ -15,7 +15,7 @@ from util import printer_print as print
 
 
 try:
-    with open("../data/", "r") as f:
+    with open("../../data-path.txt", "r") as f:
         datapath = f.readlines()[0].strip("\n")
         # path to your local data folder,
         # e.g. /Users/yourname/Documents/mydata
