@@ -47,10 +47,11 @@ import re
 class GrokTokenizer:
     # adaptation of CharTokenizer to the GrokkedTransformer dataset
     def __init__(self, data=None, verbose_init=False, from_dict=None):
+        self.unk_token = "<unk>"
         self.pad_token = "<pad>"
-        self.eos = "</a>"
-        self.unk_token = "<unk>" # there are no unk tokens, but just in case
-        self.special_tokens = [self.eos, self.pad_token, self.unk_token]
+        self.bos = "<bos>"
+        self.eos = "<eos>"
+        self.special_tokens = [self.unk_token, self.pad_token, self.bos, self.eos]
         
         if None is not from_dict:
             id2tok = from_dict["id2tok"]
@@ -74,8 +75,10 @@ class GrokTokenizer:
     def finish_init(self, id2tok, verbose_init):
         self.id2tok = id2tok
         self.tok2id = {t: i for i, t in enumerate(self.id2tok)}
+        self._pad_token_type_id = self.tok2id[self.pad_token]
         self.eos_token_id = self.tok2id[self.eos]
-        self.special_token_ids = [self.tok2id[self.eos]]
+        self.bos_token_id = self.tok2id[self.bos]
+        self.special_token_ids = [self.tok2id[t] for t in self.special_tokens]
         if verbose_init:
             print("made tokenizer with", len(self.tok2id), "tokens")
         self.is_char_tokenizer_with_eos_and_bos = False
@@ -83,14 +86,9 @@ class GrokTokenizer:
     def __call__(self, samples):
         def single(s):
             tokens = self.tokenize_string(s)
-            token_ids = [self.tok2id.get(t, self.tok2id[self.eos]) for t in tokens]
-            return token_ids + [self.eos_token_id]
-        
-        if isinstance(samples, str):
-            res = single(samples)
-        else:
-            res = [single(s) for s in samples]
-        
+            token_ids = [self.tok2id.get(t, self.tok2id[self.unk_token]) for t in tokens]
+            return [self.bos_token_id] + token_ids + [self.eos_token_id]
+        res = single(samples) if isinstance(samples, str) else [single(s) for s in samples]
         return {'input_ids': res}
 
     def get_vocab(self):
@@ -222,6 +220,7 @@ class BertTokenizerLike:
 
 def getBertLikeTokenizer(name, data=None, custom_vocab_size=30,
                          verbose_init=False):
+    print("Data samples ", len(data))
     if name == "char":
         return CharTokenizer(data, verbose_init=verbose_init)
     if name == "grok":
