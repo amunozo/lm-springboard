@@ -150,9 +150,6 @@ class LM(nn.Module):
         # mask everything except for the second-to-last item, 
         # which is what we want to predict
 
-        print("Target y", y)
-        print("Target y_masked", y_masked)
-
         z, y_masked = z.view(-1, self.n_tokens), y_masked.reshape(-1)
         main_loss = self.celoss(z, y_masked)
         losses = {"main": main_loss}
