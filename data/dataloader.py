@@ -117,7 +117,7 @@ def get_data(data_params):
     elif data_params.dataset_name == "ptb":
         samples = ptbloader()
     elif data_params.dataset_name == "grok":
-        samples = grokreader()
+        samples = grokreader(datapath + "/grok")
     elif data_params.is_synthetic_task:
         samples = syntheticdatasets.get(data_params.dataset_name)
     elif None is not get_local_datafolder(data_params.dataset_name):
